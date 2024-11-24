@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 from sklearn.model_selection import train_test_split
 
 def parse_data(filename):
@@ -7,19 +6,20 @@ def parse_data(filename):
     Parse the data from the csv file
     """
     data = pd.read_csv(filename, sep=";")
-    header = data.columns.to_list()
+    # header = data.columns.to_list()
+    header = [x.strip() for x in data.columns.to_list()]
     data = data.to_numpy()
     return data, header
 
 # print(parse_data("../Dataset/logfile.csv", 2)[:10])
 
-def split_data(data, njoint, dimensions=2, test_size=0.2, random_state=42, consider_orientation=False, header=None):
+def split_data(data, njoint, dimensions=2, test_size=0.2, random_state=42, consider_orientation=False, consider_sincos=True, header=None):
     """
     Split the data into train and test
     """
 
     # pos, cos, sin
-    features = 3
+    features = 3 if consider_sincos else 1
     attributes = features*njoint
 
     X = data[:, :attributes]

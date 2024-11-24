@@ -1,16 +1,23 @@
 import parse
 import models
+import jacobian
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
 if __name__ == "__main__":
 
-    DIM = 3
-    NJOINT = 5
-    ORIENTATION = True
 
-    VALIDATION = True
+    # ------------------------------------------------------------------------
+    # Globals
+
+    DIM = 2
+    NJOINT = 2
+    IN_SINCOS = False
+    OUT_ORIENTATION = False
+
+    NN = (32,16)
+    VALIDATION = False
     if VALIDATION:
         SET_MODEL_FILENAME = None
         GET_MODEL_FILENAME = f"../Models/model_{DIM}_{NJOINT}.keras"
@@ -27,7 +34,7 @@ if __name__ == "__main__":
     else:
         data, header = parse.parse_data(f"../Dataset/logfile_{DIM}_{NJOINT}.csv")
 
-    if ORIENTATION:
+    if OUT_ORIENTATION:
         # dim + quaternions
         noutput = DIM + (2 if DIM == 2 else 4)
     else:
@@ -37,7 +44,8 @@ if __name__ == "__main__":
     X_train, X_test, y_train, y_test = parse.split_data(data, 
                                                         njoint=NJOINT, 
                                                         dimensions=DIM,
-                                                        consider_orientation=ORIENTATION,
+                                                        consider_orientation=OUT_ORIENTATION,
+                                                        consider_sincos=IN_SINCOS,
                                                         header=header)
     
     if VALIDATION:
@@ -46,6 +54,8 @@ if __name__ == "__main__":
 
 
     assert noutput == y_train.shape[1]
+    print(f"Number of input: {X_train.shape[1]}")
+    print(f"Number of output: {noutput}")
 
     # ------------------------------------------------------------------------
     # Train the model
@@ -56,8 +66,7 @@ if __name__ == "__main__":
         model = models.get_model(noutput, regularize=False, dropout=False)
 
         # print(model.summary())
-        model.compile(optimizer='adam', loss='mean_squared_error')
-        model.fit(X_train, y_train, epochs=10)
+        model.fit(X_train, y_train, epochs=10, verbose=0)
 
         if SET_MODEL_FILENAME is not None:
             model.save(SET_MODEL_FILENAME)
@@ -72,7 +81,7 @@ if __name__ == "__main__":
 
     err_pos = np.linalg.norm(y_pred[:, :DIM] - y_test[:, :DIM], axis=1)
 
-    if ORIENTATION:
+    if OUT_ORIENTATION:
         err_ori = np.linalg.norm(y_pred[:, DIM:] - y_test[:, DIM:], axis=1)
         print(f"Mean error in position: {np.mean(err_pos)}")
         print(f"Mean error in orientation: {np.mean(err_ori)}")
@@ -89,6 +98,46 @@ if __name__ == "__main__":
     plt.figure()
     plt.plot(err_pos)
     plt.savefig("output.png")
+
+
+    # ------------------------------------------------------------------------
+    # Compare the Jacobian with the true Jacobian
+
+    thetas = np.random.random((100,2))
+    diffs = []
+    for theta in thetas:
+        J = jacobian.FK_Jacobian(model,theta)
+        J_true = jacobian.fwd_kin_jacobian_true(theta)
+        diff = tf.abs(J-J_true)
+        df_sum = tf.reduce_sum(diff) / 4
+        # if df_sum > 100:
+        #     print("Theta:", theta)
+        #     print("Jacobian from model:")
+        #     print(J)
+        #     print("True Jacobian:")
+        #     print(J_true)
+        #     print("Difference:")
+        #     print(diff)
+        diffs.append(df_sum)
+
+
+    # ------------------------------------------------------------------------
+    # Plot the difference
+
+    plt.figure()
+    plt.plot(diffs)
+    plt.ylim(0, 0.6)
+    # mean diffs as red horizontal line
+    plt.axhline(y=np.mean(diffs), color='r', linestyle='--')
+    plt.xlabel("Random theta")
+    plt.ylabel("Difference")
+    plt.title("Difference between true Jacobian and Jacobian from model")
+    plt.savefig(f"../Imgs/Jac_diffs/NN_{NN[0]}-{NN[1]}_s100.png")
+
+    print("\nJACOBIAN DIFFERENCE")
+    print("Mean difference:", np.mean(diffs))
+    print("Max difference:", np.max(diffs))
+    print("Min difference:", np.min(diffs))
 
 
 # 2 OUTPUT
