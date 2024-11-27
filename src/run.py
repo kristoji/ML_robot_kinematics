@@ -12,18 +12,19 @@ if __name__ == "__main__":
     # Globals
 
     DIM = 2
-    NJOINT = 2
+    NJOINT = 3
     IN_SINCOS = False
     OUT_ORIENTATION = False
 
-    NN = (32,16)
+    NN = (48,16)
     VALIDATION = False
     if VALIDATION:
         SET_MODEL_FILENAME = None
-        GET_MODEL_FILENAME = f"../Models/model_{DIM}_{NJOINT}.keras"
+        GET_MODEL_FILENAME = f"../Models/model_{NJOINT}dof_NN-{NN[0]}-{NN[1]}.keras"
     else:
-        SET_MODEL_FILENAME = f"../Models/model_{DIM}_{NJOINT}.keras"
+        SET_MODEL_FILENAME = f"../Models/model_{NJOINT}dof_NN-{NN[0]}-{NN[1]}.keras"
         GET_MODEL_FILENAME = None
+        # GET_MODEL_FILENAME = f"../Models/model_{NJOINT}dof_NN-{NN[0]}-{NN[1]}.keras"
 
 
     # ------------------------------------------------------------------------
@@ -103,21 +104,13 @@ if __name__ == "__main__":
     # ------------------------------------------------------------------------
     # Compare the Jacobian with the true Jacobian
 
-    thetas = np.random.random((100,2))
+    thetas = np.random.random((100, NJOINT)).astype(np.float32) * 2 * np.pi
     diffs = []
     for theta in thetas:
         J = jacobian.FK_Jacobian(model,theta)
         J_true = jacobian.fwd_kin_jacobian_true(theta)
         diff = tf.abs(J-J_true)
-        df_sum = tf.reduce_sum(diff) / 4
-        # if df_sum > 100:
-        #     print("Theta:", theta)
-        #     print("Jacobian from model:")
-        #     print(J)
-        #     print("True Jacobian:")
-        #     print(J_true)
-        #     print("Difference:")
-        #     print(diff)
+        df_sum = tf.reduce_sum(diff) / (NJOINT*2)
         diffs.append(df_sum)
 
 
@@ -126,13 +119,12 @@ if __name__ == "__main__":
 
     plt.figure()
     plt.plot(diffs)
-    plt.ylim(0, 0.6)
-    # mean diffs as red horizontal line
+    plt.ylim(0, 0.3)
     plt.axhline(y=np.mean(diffs), color='r', linestyle='--')
     plt.xlabel("Random theta")
     plt.ylabel("Difference")
     plt.title("Difference between true Jacobian and Jacobian from model")
-    plt.savefig(f"../Imgs/Jac_diffs/NN_{NN[0]}-{NN[1]}_s100.png")
+    plt.savefig(f"../Imgs/Jac_diffs/{NJOINT}DOF/NN_{NN[0]}-{NN[1]}_s100.png")
 
     print("\nJACOBIAN DIFFERENCE")
     print("Mean difference:", np.mean(diffs))

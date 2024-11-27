@@ -26,6 +26,9 @@ def split_data(data, njoint, dimensions=2, test_size=0.2, random_state=42, consi
     if header is not None:
         print(f"[V] Splitting {header[:attributes]} as inputs")
 
+    if not consider_sincos:
+        attributes += 2*njoint
+
     if consider_orientation:
         # Consider quaternion orientation as well
         y = data[:, attributes:]
@@ -35,7 +38,7 @@ def split_data(data, njoint, dimensions=2, test_size=0.2, random_state=42, consi
         # Consider x, y, z coordinates only
         y = data[:, attributes:attributes+dimensions]
         if header is not None:
-            print(f"[V] Splitting {header[attributes:attributes+dimensions]} as attributes")
+            print(f"[V] Splitting {header[attributes:attributes+dimensions]} as outputs")
     
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
     return X_train, X_test, y_train, y_test
