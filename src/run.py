@@ -12,19 +12,19 @@ if __name__ == "__main__":
     # Globals
 
     DIM = 2
-    NJOINT = 3
+    NJOINT = 2
     IN_SINCOS = False
     OUT_ORIENTATION = False
 
-    NN = (48,16)
+    NN = (16,16)
     VALIDATION = False
     if VALIDATION:
         SET_MODEL_FILENAME = None
-        GET_MODEL_FILENAME = f"../Models/model_{NJOINT}dof_NN-{NN[0]}-{NN[1]}.keras"
+        GET_MODEL_FILENAME = f"../Models/{NJOINT}DOF/model_{NJOINT}dof_NN-{NN[0]}-{NN[1]}.keras"
     else:
-        SET_MODEL_FILENAME = f"../Models/model_{NJOINT}dof_NN-{NN[0]}-{NN[1]}.keras"
+        SET_MODEL_FILENAME = f"../Models/{NJOINT}DOF/model_{NJOINT}dof_NN-{NN[0]}-{NN[1]}.keras"
         GET_MODEL_FILENAME = None
-        # GET_MODEL_FILENAME = f"../Models/model_{NJOINT}dof_NN-{NN[0]}-{NN[1]}.keras"
+        GET_MODEL_FILENAME = f"../Models/{NJOINT}DOF/model_{NJOINT}dof_NN-{NN[0]}-{NN[1]}.keras"
 
 
     # ------------------------------------------------------------------------
@@ -130,6 +130,128 @@ if __name__ == "__main__":
     print("Mean difference:", np.mean(diffs))
     print("Max difference:", np.max(diffs))
     print("Min difference:", np.min(diffs))
+    print()
+
+    # ------------------------------------------------------------------------
+    # Inverse Kinematics
+
+    newton = True
+    dbg = False
+
+    max_it_reached = 0
+    err_avg_max_it = None
+    err_avg_break = None
+
+    for _ in range(100):
+
+        curr_theta = np.random.random((NJOINT,)).astype(np.float32) * 2 * np.pi
+        curr_theta = tf.Variable(curr_theta)
+        goal_pos = np.random.random((DIM,)).astype(np.float32)
+        goal_pos = goal_pos / np.linalg.norm(goal_pos) * 0.1*NJOINT * np.random.random()
+        goal_pos = tf.Variable(goal_pos)
+
+        if dbg:
+            print("Initial theta:", curr_theta.numpy())
+            print("Initial position:", jacobian.FK(model, curr_theta).numpy())
+            print("Target position:", goal_pos.numpy())
+
+
+        if newton:
+
+            ##########################################################################
+            # Newton-Raphson Method
+            # x_{n+1} = x_n - J^-1 * f(x_n)
+            ##########################################################################
+
+            for i in range(100):
+                J = jacobian.FK_Jacobian(model, curr_theta)
+                J_inv = tf.linalg.pinv(J)
+                err = jacobian.FK(model, curr_theta) - goal_pos  
+
+                # From (DIM,) to (DIM, 1) and then back to (DIM,)
+                delta_theta = -tf.matmul(J_inv, tf.reshape(err, (-1, 1)))
+                delta_theta = tf.reshape(delta_theta, (-1,))
+
+                curr_theta.assign_add(delta_theta)
+                curr_theta.assign(tf.math.floormod(curr_theta, 2*np.pi))
+
+                if tf.reduce_sum(tf.abs(err)) < 1e-3:
+                    if dbg:
+                        print(f"Break at iteration {i}")
+                    err = tf.reduce_sum(tf.abs(err))
+                    break_reached = i + 1 - max_it_reached
+                    err_avg_break = err if err_avg_break is None else (break_reached*err_avg_break + err) / (break_reached+1)
+                    break
+            else:
+                if dbg:
+                    print("Max num iteration reached")
+                err = tf.reduce_sum(tf.abs(err))
+                err_avg_max_it = err if err_avg_max_it is None else (max_it_reached*err_avg_max_it + err) / (max_it_reached+1)
+                max_it_reached += 1
+
+        else:
+
+            ##########################################################################
+            # Levenberg-Marquardt
+            # x_{n+1} = x_n - (J^T * J + lambda * I)^-1 * J^T * f(x_n)
+            ##########################################################################
+
+            for i in range(500):
+                J = jacobian.FK_Jacobian(model, curr_theta)
+                J_T = tf.transpose(J)
+                err = jacobian.FK(model, curr_theta) - goal_pos  
+
+                lambda_ = 0.1
+                delta_theta = -tf.matmul(tf.linalg.inv(tf.matmul(J_T, J) + lambda_ * tf.eye(NJOINT)), tf.matmul(J_T, tf.reshape(err, (-1, 1))))
+                delta_theta = tf.reshape(delta_theta, (-1,))
+
+                curr_theta.assign_add(delta_theta)
+                curr_theta.assign(tf.math.floormod(curr_theta, 2*np.pi))
+
+                if tf.reduce_sum(tf.abs(err)) < 1e-3:
+                    if dbg:
+                        print(f"Break at iteration {i}")
+                    err = tf.reduce_sum(tf.abs(err))
+                    break_reached = i + 1 - max_it_reached
+                    err_avg_break = err if err_avg_break is None else (break_reached*err_avg_break + err) / (break_reached+1)
+                    break
+            else:
+                if dbg:
+                    print("Max num iteration reached")
+                err = tf.reduce_sum(tf.abs(err))
+                err_avg_max_it = err if err_avg_max_it is None else (max_it_reached*err_avg_max_it + err) / (max_it_reached+1)
+                max_it_reached += 1
+                
+
+        if dbg:
+            print()
+            print("Final theta:", curr_theta.numpy())
+            print("Final position:", jacobian.FK(model, curr_theta).numpy())
+            print("True position:", jacobian.fwd_kin_true(curr_theta).numpy())
+            print("Target:", goal_pos.numpy())
+
+    print(f"Max iteration reached: {max_it_reached} / 100")
+    print("Average error at max iteration:", err_avg_max_it.numpy())
+    print("Average error at break:", err_avg_break.numpy())
+
+    # 100 iterations, Newton-Raphson
+    # Max iteration reached: 64 / 100
+    # Average error at max iteration: 0.318262
+    # Average error at break: -4.885498e-07
+
+    # 500 iterations, Newton-Raphson
+    # Max iteration reached: 70 / 100
+    # Average error at max iteration: 0.31624046
+    # Average error at break: -1.8805721e-07
+
+    # 100 iterations, Levenberg-Marquardt
+    # Max iteration reached: 82 / 100 
+    # Average error at max iteration: 0.06085123
+
+    # 500 iterations, Levenberg-Marquardt
+    # Max iteration reached: 33 / 100
+    # Average error at max iteration: 0.118702054
+    # Average error at break: 0.00098943
 
 
 # 2 OUTPUT
