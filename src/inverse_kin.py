@@ -1,4 +1,5 @@
 import jacobian
+import numpy as np
 import tensorflow as tf
 
 def inverse_kinematic(model, in_theta, goal_pos, num_it=500, lambda_=0.1, dbg=False, newton=False):
@@ -8,7 +9,7 @@ def inverse_kinematic(model, in_theta, goal_pos, num_it=500, lambda_=0.1, dbg=Fa
 
     curr_theta = tf.Variable(in_theta)
     goal_pos = tf.Variable(goal_pos)
-    break_reached = -1
+    max_it_reached = -1
 
     njoint = in_theta.shape[0]
 
@@ -26,9 +27,17 @@ def inverse_kinematic(model, in_theta, goal_pos, num_it=500, lambda_=0.1, dbg=Fa
         ##########################################################################
 
         for i in range(num_it):
+            err = jacobian.FK(model, curr_theta) - goal_pos  
+
+            if tf.reduce_sum(tf.abs(err)) < 1e-3:
+                if dbg:
+                    print(f"Break at iteration {i}")
+                err = tf.reduce_sum(tf.abs(err))
+                max_it_reached = 0
+                break
+            
             J = jacobian.FK_Jacobian(model, curr_theta)
             J_inv = tf.linalg.pinv(J)
-            err = jacobian.FK(model, curr_theta) - goal_pos  
 
             # From (DIM,) to (DIM, 1) and then back to (DIM,)
             delta_theta = -tf.matmul(J_inv, tf.reshape(err, (-1, 1)))
@@ -36,18 +45,11 @@ def inverse_kinematic(model, in_theta, goal_pos, num_it=500, lambda_=0.1, dbg=Fa
 
             curr_theta.assign_add(delta_theta)
             curr_theta.assign(tf.math.floormod(curr_theta, 2*np.pi))
-
-            if tf.reduce_sum(tf.abs(err)) < 1e-3:
-                if dbg:
-                    print(f"Break at iteration {i}")
-                err = tf.reduce_sum(tf.abs(err))
-                break_reached = 1
-                break
         else:
             if dbg:
                 print("Max num iteration reached")
-            err = tf.reduce_sum(tf.abs(err))
-            break_reached = 0
+            err = tf.reduce_sum(tf.abs(jacobian.FK(model, curr_theta) - goal_pos))
+            max_it_reached = 1
 
     else:
 
@@ -57,9 +59,17 @@ def inverse_kinematic(model, in_theta, goal_pos, num_it=500, lambda_=0.1, dbg=Fa
         ##########################################################################
 
         for i in range(num_it):
+            err = jacobian.FK(model, curr_theta) - goal_pos  
+            
+            if tf.reduce_sum(tf.abs(err)) < 1e-3:
+                if dbg:
+                    print(f"Break at iteration {i}")
+                err = tf.reduce_sum(tf.abs(err))
+                max_it_reached = 0
+                break
+            
             J = jacobian.FK_Jacobian(model, curr_theta)
             J_T = tf.transpose(J)
-            err = jacobian.FK(model, curr_theta) - goal_pos  
 
             delta_theta = -tf.matmul(tf.linalg.inv(tf.matmul(J_T, J) + lambda_ * tf.eye(njoint)), tf.matmul(J_T, tf.reshape(err, (-1, 1))))
             delta_theta = tf.reshape(delta_theta, (-1,))
@@ -67,17 +77,11 @@ def inverse_kinematic(model, in_theta, goal_pos, num_it=500, lambda_=0.1, dbg=Fa
             curr_theta.assign_add(delta_theta)
             curr_theta.assign(tf.math.floormod(curr_theta, 2*np.pi))
 
-            if tf.reduce_sum(tf.abs(err)) < 1e-3:
-                if dbg:
-                    print(f"Break at iteration {i}")
-                err = tf.reduce_sum(tf.abs(err))
-                break_reached = 1
-                break
         else:
             if dbg:
                 print("Max num iteration reached")
-            err = tf.reduce_sum(tf.abs(err))
-            break_reached = 0
+            err = tf.reduce_sum(tf.abs(jacobian.FK(model, curr_theta) - goal_pos))
+            max_it_reached = 1
             
 
     if dbg:
@@ -87,4 +91,4 @@ def inverse_kinematic(model, in_theta, goal_pos, num_it=500, lambda_=0.1, dbg=Fa
         print("True position:", jacobian.fwd_kin_true(curr_theta).numpy())
         print("Target:", goal_pos.numpy())
 
-    return curr_theta.numpy(), err.numpy(), break_reached
+    return curr_theta.numpy(), err.numpy(), max_it_reached
