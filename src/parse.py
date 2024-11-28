@@ -42,14 +42,3 @@ def split_data(data, njoint, dimensions=2, test_size=0.2, random_state=42, consi
     
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
     return X_train, X_test, y_train, y_test
-
-
-
-# data = parse_data("../Dataset/logfile.csv")
-# print(data[:10])
-# print()
-# X_train, X_test, y_train, y_test = split_data(data[:10], 2)
-# print(X_train)
-# print(X_test)
-# print(y_train)
-# print(y_test)

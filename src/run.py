@@ -148,7 +148,7 @@ if __name__ == "__main__":
 
         for i in range(100):
 
-            in_theta = np.random.random((NJOINT,)).astype(np.float32) * 2 * np.pi
+            in_theta = np.random.random((NJOINT,)).astype(np.float32) * 2 * np.pi - np.pi
             goal_pos = np.random.random((DIM,)).astype(np.float32)
             goal_pos = goal_pos / np.linalg.norm(goal_pos) * 0.1*NJOINT * np.random.random()
 
@@ -188,12 +188,66 @@ if __name__ == "__main__":
         # Average error at break: 0.00098943
     
     else:
-        in_theta = np.random.random((NJOINT,)).astype(np.float32) * 2 * np.pi
+        in_theta = np.random.random((NJOINT,)).astype(np.float32) * 2 * np.pi - np.pi
         goal_pos = np.random.random((DIM,)).astype(np.float32)
         goal_pos = goal_pos / np.linalg.norm(goal_pos) * 0.1*NJOINT * np.random.random()
 
         final_theta, err, max_it_reached = inverse_kin.inverse_kinematic(model, in_theta, goal_pos,
                                                                         newton=NEWTON, num_it=NUM_IT, dbg=True)
+
+
+    # ------------------------------------------------------------------------
+    # PID Controller
+    
+    import sys
+    import time
+
+    from envs.reacher_v6 import ReacherEnv
+    from envs.reacher3_v6 import Reacher3Env
+    from envs.marrtino_arm import MARRtinoArmEnv
+
+    if NJOINT == 2:
+        env = ReacherEnv(render_mode="human")
+    elif NJOINT == 3:
+        env = Reacher3Env(render_mode="human")
+    elif NJOINT == 5:
+        env = MARRtinoArmEnv(render_mode="human")
+    else:
+        print(f"Unknown environment {NJOINT}")
+        sys.exit(1)
+    
+
+    print(f"Observation: {env.observation_space}")
+    print(f"Action: {env.action_space}")
+
+    seed = 1234
+    observation, info = env.reset(seed=seed)
+    env.action_space.seed(seed=seed)
+
+    curr_theta = np.array([x - 2*np.pi if x > np.pi else x for x in in_theta])
+    final_theta = np.array([x - 2*np.pi if x > np.pi else x for x in final_theta])
+    int_err = np.zeros(NJOINT)
+
+    Kp = 0.1
+    Ki = 0.01
+
+    for i in range(1,100):
+        err = final_theta - curr_theta
+        err = np.clip(err, -1, 1)
+        ref_theta = curr_theta + err
+        int_err = np.clip(int_err + err, -1, 1)
+        action = ref_theta + Kp*err + Ki*int_err
+        action = np.clip(action, -1, 1)
+        observation, reward, terminated, truncated, info = env.step(action)
+        curr_theta = observation[:NJOINT]
+        time.sleep(0.1)
+        print(f"curr_Theta: {curr_theta}, Final_theta: {final_theta}\nError: {err}")
+        if terminated or truncated:
+            observation, info = env.reset()
+
+    env.close()
+
+
 
 
 
