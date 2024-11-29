@@ -199,56 +199,35 @@ if __name__ == "__main__":
     # ------------------------------------------------------------------------
     # PID Controller
     
-    import sys
+    import pid
     import time
-
-    from envs.reacher_v6 import ReacherEnv
-    from envs.reacher3_v6 import Reacher3Env
-    from envs.marrtino_arm import MARRtinoArmEnv
-
-    if NJOINT == 2:
-        env = ReacherEnv(render_mode="human")
-    elif NJOINT == 3:
-        env = Reacher3Env(render_mode="human")
-    elif NJOINT == 5:
-        env = MARRtinoArmEnv(render_mode="human")
-    else:
-        print(f"Unknown environment {NJOINT}")
-        sys.exit(1)
     
+    env = pid.get_env(NJOINT, in_theta, goal_pos)                   # TODO: works only for 2DOF
+    pid_ctrl = pid.PID_Controller(NJOINT, final_theta)              # TODO: tune the pid here
 
-    print(f"Observation: {env.observation_space}")
-    print(f"Action: {env.action_space}")
+    curr_theta = in_theta
 
-    seed = 1234
-    observation, info = env.reset(seed=seed)
-    env.action_space.seed(seed=seed)
+    print(f"Initial theta: {curr_theta}")
+    print(f"Goal theta: {final_theta}")
+    print(f"Goal pos: {goal_pos}")
+    
+    input()
 
-    curr_theta = np.array([x - 2*np.pi if x > np.pi else x for x in in_theta])
-    final_theta = np.array([x - 2*np.pi if x > np.pi else x for x in final_theta])
-    int_err = np.zeros(NJOINT)
+    for _ in range(100):
+        action = pid_ctrl.step(curr_theta, final_theta)
 
-    Kp = 0.1
-    Ki = 0.01
-
-    for i in range(1,100):
-        err = final_theta - curr_theta
-        err = np.clip(err, -1, 1)
-        ref_theta = curr_theta + err
-        int_err = np.clip(int_err + err, -1, 1)
-        action = ref_theta + Kp*err + Ki*int_err
-        action = np.clip(action, -1, 1)
         observation, reward, terminated, truncated, info = env.step(action)
         curr_theta = observation[:NJOINT]
-        time.sleep(0.1)
-        print(f"curr_Theta: {curr_theta}, Final_theta: {final_theta}\nError: {err}")
+
+        # print(f"curr: {curr_theta}, goal: {final_theta}, err: {err}, act: {action}")
+
         if terminated or truncated:
             observation, info = env.reset()
 
+        time.sleep(pid_ctrl.dt)
+
     env.close()
-
-
-
+    print(f"Final theta: {curr_theta}")
 
 
 # 2 OUTPUT
