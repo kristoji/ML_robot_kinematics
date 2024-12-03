@@ -30,11 +30,15 @@
 			</body>
 		</body>
 		<!-- Target -->
-		<body name="target" pos=".1 -.1 .01">
+		<body name="target" pos=".1 -.1 -10">
 			<joint armature="0" axis="1 0 0" damping="0" limited="true" name="target_x" pos="0 0 0" range="-.27 .27" ref=".1" stiffness="0" type="slide"/>
 			<joint armature="0" axis="0 1 0" damping="0" limited="true" name="target_y" pos="0 0 0" range="-.27 .27" ref="-.1" stiffness="0" type="slide"/>
 			<geom conaffinity="0" contype="0" name="target" pos="0 0 0" rgba="0.9 0.2 0.2 1" size=".009" type="sphere"/>
 		</body>
+		<!-- My Target -->
+		<geom type="sphere" pos="0.1692979979702437 -0.11151600855498953 0.01" size="0.015" rgba="1 0 0 1"/>
+		<geom type="sphere" pos="0.15853245535885568 -0.13222588512353084 0.01" size="0.015" rgba="0 1 0 1"/>
+		<geom type="sphere" pos="0.16863244771957397 -0.11182963103055954 0.01" size="0.015" rgba="0 0 1 1"/>
 	</worldbody>
 	<actuator>
 		<motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="200.0" joint="joint0"/>

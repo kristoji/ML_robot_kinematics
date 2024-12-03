@@ -3,20 +3,17 @@ import numpy as np
 import tensorflow as tf
 
 def inverse_kinematic(model, in_theta, goal_pos, num_it=500, lambda_=0.1, dbg=False, newton=False):
-    # curr_theta = np.random.random((NJOINT,)).astype(np.float32) * 2 * np.pi
-    # goal_pos = np.random.random((DIM,)).astype(np.float32)
-    # goal_pos = goal_pos / np.linalg.norm(goal_pos) * 0.1*NJOINT * np.random.random()
-
     curr_theta = tf.Variable(in_theta)
     goal_pos = tf.Variable(goal_pos)
+    goal_pos = tf.cast(goal_pos, tf.float32)
     max_it_reached = -1
 
     njoint = in_theta.shape[0]
 
     if dbg:
-        print("Initial theta:", curr_theta.numpy())
-        print("Initial position:", jacobian.FK(model, curr_theta).numpy())
-        print("Target position:", goal_pos.numpy())
+        print("[THT] start:\t", curr_theta.numpy())
+        print("[POS] start:\t", jacobian.FK(model, curr_theta).numpy())
+        print("[POS] end:\t", goal_pos.numpy())
 
 
     if newton:
@@ -60,7 +57,7 @@ def inverse_kinematic(model, in_theta, goal_pos, num_it=500, lambda_=0.1, dbg=Fa
 
         for i in range(num_it):
             err = jacobian.FK(model, curr_theta) - goal_pos  
-            
+            err = tf.cast(err, tf.float64)
             if tf.reduce_sum(tf.abs(err)) < 1e-3:
                 if dbg:
                     print(f"Break at iteration {i}")
@@ -71,11 +68,13 @@ def inverse_kinematic(model, in_theta, goal_pos, num_it=500, lambda_=0.1, dbg=Fa
             J = jacobian.FK_Jacobian(model, curr_theta)
             J_T = tf.transpose(J)
 
-            delta_theta = -tf.matmul(tf.linalg.inv(tf.matmul(J_T, J) + lambda_ * tf.eye(njoint)), tf.matmul(J_T, tf.reshape(err, (-1, 1))))
+            delta_theta = -tf.matmul(tf.linalg.inv(tf.matmul(J_T, J) + lambda_ * tf.eye(njoint, dtype=tf.float64)), tf.matmul(J_T, tf.reshape(err, (-1, 1))))
             delta_theta = tf.reshape(delta_theta, (-1,))
 
             curr_theta.assign_add(delta_theta)
-            curr_theta.assign(tf.math.floormod(curr_theta, 2*np.pi))
+            # curr_theta = tf.where(curr_theta > np.pi, curr_theta - 2*np.pi, curr_theta)
+            curr_theta.assign(tf.where(curr_theta > np.pi, curr_theta - 2*np.pi, curr_theta))
+            curr_theta.assign(tf.where(curr_theta < -np.pi, curr_theta + 2*np.pi, curr_theta))
 
         else:
             if dbg:
@@ -86,9 +85,9 @@ def inverse_kinematic(model, in_theta, goal_pos, num_it=500, lambda_=0.1, dbg=Fa
 
     if dbg:
         print()
-        print("Final theta:", curr_theta.numpy())
-        print("Final position:", jacobian.FK(model, curr_theta).numpy())
-        print("True position:", jacobian.fwd_kin_true(curr_theta).numpy())
-        print("Target:", goal_pos.numpy())
+        print("[THT] Final:\t", curr_theta.numpy())
+        print("[POS] FK true:\t", jacobian.fwd_kin_true(curr_theta).numpy())
+        print("[POS] FK model:\t", jacobian.FK(model, curr_theta).numpy())
+        print("[POS] Wanted:\t", goal_pos.numpy())
 
     return curr_theta.numpy(), err.numpy(), max_it_reached

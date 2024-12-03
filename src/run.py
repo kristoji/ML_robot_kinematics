@@ -1,3 +1,5 @@
+import pid
+import time
 import parse
 import models
 import jacobian
@@ -6,14 +8,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
+# TF_CPP_MIN_LOG_LEVEL=2 python run.py
 if __name__ == "__main__":
-
 
     # ------------------------------------------------------------------------
     # Globals
 
     DIM = 2
-    NJOINT = 2
+    NJOINT = 3
     IN_SINCOS = False
     OUT_ORIENTATION = False
 
@@ -148,9 +150,10 @@ if __name__ == "__main__":
 
         for i in range(100):
 
-            in_theta = np.random.random((NJOINT,)).astype(np.float32) * 2 * np.pi - np.pi
-            goal_pos = np.random.random((DIM,)).astype(np.float32)
-            goal_pos = goal_pos / np.linalg.norm(goal_pos) * 0.1*NJOINT * np.random.random()
+            in_theta = pid.get_rnd_theta(NJOINT)
+            goal_pos = pid.get_rnd_pos_in_workspace(NJOINT)
+            in_theta = tf.cast(in_theta, tf.float64)
+            goal_pos = tf.cast(goal_pos, tf.float64)
 
             final_theta, err, max_it_reached = inverse_kin.inverse_kinematic(model, in_theta, goal_pos,
                                                                             newton=NEWTON, num_it=NUM_IT)
@@ -188,8 +191,10 @@ if __name__ == "__main__":
         # Average error at break: 0.00098943
     
     else:
-        in_theta = np.random.random((NJOINT,)).astype(np.float32) * 2 * np.pi - np.pi
-        goal_pos = np.random.random((DIM,)).astype(np.float32)
+        in_theta = pid.get_rnd_theta(NJOINT)
+        goal_pos = pid.get_rnd_pos_in_workspace(NJOINT)
+        in_theta = tf.cast(in_theta, tf.float64)
+        goal_pos = tf.cast(goal_pos, tf.float64)
         goal_pos = goal_pos / np.linalg.norm(goal_pos) * 0.1*NJOINT * np.random.random()
 
         final_theta, err, max_it_reached = inverse_kin.inverse_kinematic(model, in_theta, goal_pos,
@@ -199,22 +204,30 @@ if __name__ == "__main__":
     # ------------------------------------------------------------------------
     # PID Controller
     
-    import pid
-    import time
+    # TODO: prova a cambiare la FK e Jacobiana per tenere conto dei boundaries
+    minmax = [3.14, 3] if NJOINT == 2 else [3.14, 1.8, 1.8]
+    if any([y < x < np.pi or y < -x < np.pi for x, y in zip(final_theta, minmax)]):
+        # this happens due to redundancy of the robot when not considering the orientation
+        print("Position out of workspace")
+        exit()
+    final_theta = tf.where(final_theta > minmax, final_theta - 2*np.pi, final_theta)
     
-    env = pid.get_env(NJOINT, in_theta, goal_pos)                   # TODO: works only for 2DOF
-    pid_ctrl = pid.PID_Controller(NJOINT, final_theta)              # TODO: tune the pid here
+    env = pid.get_env(NJOINT, in_theta, goal_pos, model=model, final_theta=final_theta)
+    pid_ctrl = pid.PID_Controller(NJOINT, final_theta)
 
     curr_theta = in_theta
 
-    print(f"Initial theta: {curr_theta}")
-    print(f"Goal theta: {final_theta}")
-    print(f"Goal pos: {goal_pos}")
+    print()
+    print("------------------------------")
+    print("PID Controller")
+    print(f"[THT] Start:\t{curr_theta}")
+    print(f"[THT] Goal:\t{final_theta}")
+    print(f"[POS] Wanted: {goal_pos}")
     
-    input()
+    # input()
 
     for _ in range(100):
-        action = pid_ctrl.step(curr_theta, final_theta)
+        action = pid_ctrl.step(curr_theta)
 
         observation, reward, terminated, truncated, info = env.step(action)
         curr_theta = observation[:NJOINT]
@@ -227,7 +240,9 @@ if __name__ == "__main__":
         time.sleep(pid_ctrl.dt)
 
     env.close()
-    print(f"Final theta: {curr_theta}")
+    print("----")
+    print(f"[THT] GOT: {curr_theta}")
+    print(f"[POS] GOT: {jacobian.FK(model, curr_theta)}")
 
 
 # 2 OUTPUT
@@ -258,3 +273,25 @@ if __name__ == "__main__":
 # Mean error in position: 0.014029994865092094
 # Mean error in orientation: 0.02028842137822963
 # Mean error: 0.02538335946761391
+
+
+
+# TODO: check this, in which the 3 dots where far away from each other
+
+# ------------------------------
+# Goal theta true: [-0.34784153 -0.68790793]
+# Goal pos: [ 0.1449992  -0.12011141]
+# Initial theta: [0.51671116 1.14708817]
+# Initial position: [0.05370678 0.14796942]
+# Target position: [ 0.14033133 -0.11624474]
+# Break at iteration 85
+
+# Final theta: [4.14391478 3.88674853]
+# Final position: [ 0.13993664 -0.11683822]
+# True position: [-0.07141107  0.0141709 ]
+# Target: [ 0.14033133 -0.11624474]
+
+# Initial theta: [0.51671116 1.14708817]
+# Goal theta: [-2.13927053 -2.39643678]
+# Goal pos: [ 0.14033133 -0.11624474]
+# Final theta: [-2.17000402 -2.43978244]
