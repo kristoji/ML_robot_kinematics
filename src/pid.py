@@ -57,9 +57,8 @@ def get_rnd_pos_in_workspace(NJOINT):
         print(f"Unknown environment {NJOINT}")
         sys.exit(1)
     theta = get_rnd_theta(NJOINT)
-    print("------------------------------")
-    print(f"Goal theta true: {theta}")
-    print(f"Goal pos: {jacobian.fwd_kin_true(theta)}")
+    print(f"[THT] True Goal: {theta}\n")
+    # print(f"Goal pos: {jacobian.fwd_kin_true(theta)}")
     return jacobian.fwd_kin_true(theta)
 
 

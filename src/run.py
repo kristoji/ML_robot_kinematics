@@ -15,7 +15,7 @@ if __name__ == "__main__":
     # Globals
 
     DIM = 2
-    NJOINT = 3
+    NJOINT = 2
     IN_SINCOS = False
     OUT_ORIENTATION = False
 
@@ -137,9 +137,12 @@ if __name__ == "__main__":
 
     # ------------------------------------------------------------------------
     # Inverse Kinematics
+    
+    print("------------------------------")
+    print("Inverse Kinematics")
 
     NEWTON = False
-    NUM_IT = 500
+    NUM_IT = 1000
     STRESS_TEST = False
 
     if STRESS_TEST:
@@ -195,7 +198,6 @@ if __name__ == "__main__":
         goal_pos = pid.get_rnd_pos_in_workspace(NJOINT)
         in_theta = tf.cast(in_theta, tf.float64)
         goal_pos = tf.cast(goal_pos, tf.float64)
-        goal_pos = goal_pos / np.linalg.norm(goal_pos) * 0.1*NJOINT * np.random.random()
 
         final_theta, err, max_it_reached = inverse_kin.inverse_kinematic(model, in_theta, goal_pos,
                                                                         newton=NEWTON, num_it=NUM_IT, dbg=True)
@@ -205,7 +207,7 @@ if __name__ == "__main__":
     # PID Controller
     
     # TODO: prova a cambiare la FK e Jacobiana per tenere conto dei boundaries
-    minmax = [3.14, 3] if NJOINT == 2 else [3.14, 1.8, 1.8]
+    minmax = [3.14, 3] if NJOINT == 2 else [3.14, 1.85, 1.85]
     if any([y < x < np.pi or y < -x < np.pi for x, y in zip(final_theta, minmax)]):
         # this happens due to redundancy of the robot when not considering the orientation
         print("Position out of workspace")
@@ -273,25 +275,3 @@ if __name__ == "__main__":
 # Mean error in position: 0.014029994865092094
 # Mean error in orientation: 0.02028842137822963
 # Mean error: 0.02538335946761391
-
-
-
-# TODO: check this, in which the 3 dots where far away from each other
-
-# ------------------------------
-# Goal theta true: [-0.34784153 -0.68790793]
-# Goal pos: [ 0.1449992  -0.12011141]
-# Initial theta: [0.51671116 1.14708817]
-# Initial position: [0.05370678 0.14796942]
-# Target position: [ 0.14033133 -0.11624474]
-# Break at iteration 85
-
-# Final theta: [4.14391478 3.88674853]
-# Final position: [ 0.13993664 -0.11683822]
-# True position: [-0.07141107  0.0141709 ]
-# Target: [ 0.14033133 -0.11624474]
-
-# Initial theta: [0.51671116 1.14708817]
-# Goal theta: [-2.13927053 -2.39643678]
-# Goal pos: [ 0.14033133 -0.11624474]
-# Final theta: [-2.17000402 -2.43978244]

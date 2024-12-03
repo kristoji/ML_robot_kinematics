@@ -41,10 +41,13 @@ def inverse_kinematic(model, in_theta, goal_pos, num_it=500, lambda_=0.1, dbg=Fa
             delta_theta = tf.reshape(delta_theta, (-1,))
 
             curr_theta.assign_add(delta_theta)
-            curr_theta.assign(tf.math.floormod(curr_theta, 2*np.pi))
+            # curr_theta.assign(tf.math.floormod(curr_theta, 2*np.pi))
+            curr_theta.assign(tf.where(curr_theta > np.pi, curr_theta - 2*np.pi, curr_theta))
+            curr_theta.assign(tf.where(curr_theta < -np.pi, curr_theta + 2*np.pi, curr_theta))
         else:
             if dbg:
                 print("Max num iteration reached")
+                print("The algorithm did not converge")
             err = tf.reduce_sum(tf.abs(jacobian.FK(model, curr_theta) - goal_pos))
             max_it_reached = 1
 
@@ -79,6 +82,7 @@ def inverse_kinematic(model, in_theta, goal_pos, num_it=500, lambda_=0.1, dbg=Fa
         else:
             if dbg:
                 print("Max num iteration reached")
+                print("The algorithm did not converge")
             err = tf.reduce_sum(tf.abs(jacobian.FK(model, curr_theta) - goal_pos))
             max_it_reached = 1
             
