@@ -2,6 +2,7 @@ import sys
 import time
 import jacobian
 import numpy as np
+import tensorflow as tf
 from envs.reacher_v6 import ReacherEnv
 from envs.reacher3_v6 import Reacher3Env
 from envs.marrtino_arm import MARRtinoArmEnv
@@ -48,18 +49,27 @@ def get_rnd_theta(NJOINT):
     if NJOINT != 2 and NJOINT != 3:
         print(f"Unknown environment {NJOINT}")
         sys.exit(1)
-    minmax = [3.14, 3] if NJOINT == 2 else [3.14, 1.8, 1.8]
+    bounds = [3.14, 3] if NJOINT == 2 else [3.14, 1.8, 1.8]
     rnd = np.random.random((NJOINT,)).astype(np.float32)
-    return np.array([rnd[i] * 2 * minmax[i] - minmax[i] for i in range(NJOINT)])
+    
+    theta = np.array([rnd[i] * 2 * bounds[i] - bounds[i] for i in range(NJOINT)])
+    theta = tf.cast(theta, tf.float64)
+    return theta
 
-def get_rnd_pos_in_workspace(NJOINT):
+def get_rnd_pos_in_workspace(NJOINT, verbose=False):
     if NJOINT != 2 and NJOINT != 3:
         print(f"Unknown environment {NJOINT}")
         sys.exit(1)
+
     theta = get_rnd_theta(NJOINT)
-    print(f"[THT] True Goal: {theta}\n")
-    # print(f"Goal pos: {jacobian.fwd_kin_true(theta)}")
-    return jacobian.fwd_kin_true(theta)
+
+    pos = jacobian.fwd_kin_true(theta)
+    pos = tf.cast(pos, tf.float64)
+    
+    if verbose:
+        print(f"[THT] True Goal: {theta}\n")
+        # print(f"Goal pos: {jacobian.fwd_kin_true(theta)}")
+    return pos
 
 
 class PID_Controller:

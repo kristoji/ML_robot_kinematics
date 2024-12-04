@@ -25,6 +25,7 @@ def inverse_kinematic(model, in_theta, goal_pos, num_it=500, lambda_=0.1, dbg=Fa
 
         for i in range(num_it):
             err = jacobian.FK(model, curr_theta) - goal_pos  
+            err = tf.cast(err, tf.float64)
 
             if tf.reduce_sum(tf.abs(err)) < 1e-3:
                 if dbg:
@@ -41,7 +42,6 @@ def inverse_kinematic(model, in_theta, goal_pos, num_it=500, lambda_=0.1, dbg=Fa
             delta_theta = tf.reshape(delta_theta, (-1,))
 
             curr_theta.assign_add(delta_theta)
-            # curr_theta.assign(tf.math.floormod(curr_theta, 2*np.pi))
             curr_theta.assign(tf.where(curr_theta > np.pi, curr_theta - 2*np.pi, curr_theta))
             curr_theta.assign(tf.where(curr_theta < -np.pi, curr_theta + 2*np.pi, curr_theta))
         else:
@@ -61,6 +61,7 @@ def inverse_kinematic(model, in_theta, goal_pos, num_it=500, lambda_=0.1, dbg=Fa
         for i in range(num_it):
             err = jacobian.FK(model, curr_theta) - goal_pos  
             err = tf.cast(err, tf.float64)
+            
             if tf.reduce_sum(tf.abs(err)) < 1e-3:
                 if dbg:
                     print(f"Break at iteration {i}")
@@ -75,7 +76,6 @@ def inverse_kinematic(model, in_theta, goal_pos, num_it=500, lambda_=0.1, dbg=Fa
             delta_theta = tf.reshape(delta_theta, (-1,))
 
             curr_theta.assign_add(delta_theta)
-            # curr_theta = tf.where(curr_theta > np.pi, curr_theta - 2*np.pi, curr_theta)
             curr_theta.assign(tf.where(curr_theta > np.pi, curr_theta - 2*np.pi, curr_theta))
             curr_theta.assign(tf.where(curr_theta < -np.pi, curr_theta + 2*np.pi, curr_theta))
 

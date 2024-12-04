@@ -36,9 +36,9 @@
 			<geom conaffinity="0" contype="0" name="target" pos="0 0 0" rgba="0.9 0.2 0.2 1" size=".009" type="sphere"/>
 		</body>
 		<!-- My Target -->
-		<geom type="sphere" pos="-0.17544526385424788 0.2111614243426982 0.01" size="0.015" rgba="1 0 0 1"/>
-		<geom type="sphere" pos="-0.18370224272298466 0.22299021443550882 0.01" size="0.015" rgba="0 1 0 1"/>
-		<geom type="sphere" pos="-0.15797019004821777 0.1783892810344696 0.01" size="0.015" rgba="0 0 1 1"/>
+		<geom type="sphere" pos="0.09391178779323578 -0.276465914669856 0.01" size="0.015" rgba="1 0 0 1"/>
+		<geom type="sphere" pos="0.08853991558472764 -0.2635359041981048 0.01" size="0.015" rgba="0 1 0 1"/>
+		<geom type="sphere" pos="0.08790434896945953 -0.26357656717300415 0.01" size="0.015" rgba="0 0 1 1"/>
 	</worldbody>
 	<actuator>
 		<motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="200.0" joint="joint0"/>

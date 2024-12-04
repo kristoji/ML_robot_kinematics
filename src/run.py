@@ -1,3 +1,4 @@
+import os
 import pid
 import time
 import parse
@@ -15,21 +16,17 @@ if __name__ == "__main__":
     # Globals
 
     DIM = 2
-    NJOINT = 2
+    NJOINT = 3
     IN_SINCOS = False
     OUT_ORIENTATION = False
 
-    NN = (16,16)
+    NN = (48,48)
     VALIDATION = False
-    if VALIDATION:
-        SET_MODEL_FILENAME = None
-        GET_MODEL_FILENAME = f"../Models/{NJOINT}DOF/model_{NJOINT}dof_NN-{NN[0]}-{NN[1]}.keras"
-    else:
-        SET_MODEL_FILENAME = f"../Models/{NJOINT}DOF/model_{NJOINT}dof_NN-{NN[0]}-{NN[1]}.keras"
+
+    GET_MODEL_FILENAME = f"../Models/{NJOINT}DOF/model_{NJOINT}dof_NN-{NN[0]}-{NN[1]}.keras"
+    if GET_MODEL_FILENAME not in os.listdir(f"../Models/{NJOINT}DOF/"):
+        SET_MODEL_FILENAME = GET_MODEL_FILENAME
         GET_MODEL_FILENAME = None
-        GET_MODEL_FILENAME = f"../Models/{NJOINT}DOF/model_{NJOINT}dof_NN-{NN[0]}-{NN[1]}.keras"
-
-
     # ------------------------------------------------------------------------
     # Load the data and split it into train and test
 
@@ -58,8 +55,8 @@ if __name__ == "__main__":
 
 
     assert noutput == y_train.shape[1]
-    print(f"Number of input: {X_train.shape[1]}")
-    print(f"Number of output: {noutput}")
+    print(f"# input: {X_train.shape[1]}")
+    print(f"# output: {noutput}")
 
     # ------------------------------------------------------------------------
     # Train the model
@@ -137,7 +134,7 @@ if __name__ == "__main__":
 
     # ------------------------------------------------------------------------
     # Inverse Kinematics
-    
+
     print("------------------------------")
     print("Inverse Kinematics")
 
@@ -245,6 +242,15 @@ if __name__ == "__main__":
     print("----")
     print(f"[THT] GOT: {curr_theta}")
     print(f"[POS] GOT: {jacobian.FK(model, curr_theta)}")
+
+# [POS] True Goal:  sfera rossa
+# [POS] FK True:    sfera blu
+# [POS] FK:         sfera verde
+
+# distanza tra sfera blu e verde indica quanto la FK del modello è buona
+# - se lontane, probabilmente il modello non è stato addestrato bene
+# distanza tra sfera rossa e la verde indica quanto l'algoritmo di INV KIN è buono:
+# - se lontane, probabilmente l'algoritmo non ha trovato convergenza
 
 
 # 2 OUTPUT
