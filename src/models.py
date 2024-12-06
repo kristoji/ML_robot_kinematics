@@ -1,41 +1,5 @@
 import tensorflow as tf
 
-def get_model(noutput, regularize=False, dropout=False, layers=(8,8)) -> tf.keras.models.Sequential:
-    first_layer = layers[0]
-    second_layer = layers[1]
-
-    if regularize and dropout:
-        model = tf.keras.models.Sequential([
-            tf.keras.layers.Dense(first_layer, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001)),
-            tf.keras.layers.Dense(second_layer, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001)),
-            tf.keras.layers.Dropout(0.2),
-            tf.keras.layers.Dense(noutput)
-        ])
-    elif dropout:
-        model = tf.keras.models.Sequential([
-            tf.keras.layers.Dense(first_layer, activation='relu'),
-            tf.keras.layers.Dense(second_layer, activation='relu'),
-            tf.keras.layers.Dropout(0.2),
-            tf.keras.layers.Dense(noutput)
-        ])
-
-    elif regularize:
-        model = tf.keras.models.Sequential([
-            tf.keras.layers.Dense(first_layer, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001)),
-            tf.keras.layers.Dense(second_layer, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001)),
-            tf.keras.layers.Dense(noutput)
-        ])
-    else:
-        model = tf.keras.models.Sequential([
-            tf.keras.layers.Dense(first_layer, activation='relu'),
-            tf.keras.layers.Dense(second_layer, activation='relu'),
-            tf.keras.layers.Dense(noutput)
-        ])
-
-    model.compile(optimizer='adam', loss='mean_squared_error')
-
-    return model
-
 class NeuralNetwork:
     def __init__(self, dim, njoint, layers: tuple, in_sincos=False, out_orientation=False, regularize=False, dropout=False,
                  optimizer='adam', loss='mean_squared_error', activation='relu', save_model=True):
@@ -56,20 +20,27 @@ class NeuralNetwork:
             self.noutput = dim
         
         end_str = ""
-        if dropout or regularize:
-            end_str = "_"
-            if dropout:
-                end_str += "d"
-            if regularize:
-                end_str += "r"
+        end_str += "d" if dropout else ""
+        end_str += "r" if regularize else ""
+        end_str += "o" if optimizer != "adam" else ""
+        end_str += "l" if loss != "mean_squared_error" else ""
+        end_str += "a" if activation != "relu" else ""
+        end_str += "s" if in_sincos else ""
+        end_str += "q" if out_orientation else ""
+        end_str = "_" + end_str if end_str else ""
 
         if save_model:
             from os import listdir
-            self.get_model_filename = f"../Models/{njoint}DOF/model_{njoint}dof_NN-{layers[0]}-{layers[1]}" + end_str + ".keras"
-            if self.get_model_filename not in listdir(f"../Models/{njoint}DOF/"):
-                print("Already saved model found!")
-                self.set_model_filename = self.get_model_filename
+            models_dir = f"../Models/{njoint}DOF/"
+            self.get_model_filename = f"model_{njoint}dof_NN-{layers[0]}-{layers[1]}" + end_str + ".keras"
+            if self.get_model_filename not in listdir(models_dir):
+                print("No saved model found!")
+                self.set_model_filename = models_dir + self.get_model_filename
                 self.get_model_filename = None
+            else:
+                print("Already saved model found!")
+                self.set_model_filename = None
+                self.get_model_filename = models_dir + self.get_model_filename
         else:
             self.get_model_filename = None
             self.set_model_filename = None
@@ -109,7 +80,7 @@ class NeuralNetwork:
         return self.model
             
     def evaluate(self, X_test, y_test, verbose=2):
-        self.model.evaluate(X_test, y_test, verbose=verbose)
+        print("Evaluation: ", self.model.evaluate(X_test, y_test, verbose=verbose))
 
         y_pred = self.model.predict(X_test)
 
@@ -140,9 +111,8 @@ class NeuralNetwork:
         for theta in thetas:
             J = jacobian.FK_Jacobian(model,theta)
             J_true = jacobian.fwd_kin_jacobian_true(theta)
-            diff = tf.abs(J-J_true)
-            df_sum = tf.reduce_sum(diff) / (self.njoint*2)
-            diffs.append(df_sum)
+            norm = tf.norm(J-J_true)
+            diffs.append(norm)
 
         return diffs
     
@@ -156,7 +126,7 @@ class NeuralNetwork:
         plt.axhline(y=tf.reduce_mean(diffs), color='r', linestyle='--')
         plt.xlabel("Random theta")
         plt.ylabel("Difference")
-        plt.title("Difference between true Jacobian and Jacobian from model")
+        plt.title(f"Difference between true Jacobian and Jacobian from NN ({self.layers[0]}-{self.layers[1]})")
         plt.savefig(f"../Imgs/Jac_diffs/{self.njoint}DOF/NN_{self.layers[0]}-{self.layers[1]}_s100.png")
         
         print("Mean difference:", np.mean(diffs))

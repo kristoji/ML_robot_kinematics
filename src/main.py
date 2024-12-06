@@ -18,9 +18,10 @@ if __name__ == "__main__":
     IN_SINCOS = False
     OUT_ORIENTATION = False
 
-    NN = (12,12)
+    NN = (32,32)
     VALIDATION = False
 
+    # ------------------------------------------------------------------------
     # ------------------------------------------------------------------------
     # Load the data and split it into train and test
 
@@ -50,8 +51,9 @@ if __name__ == "__main__":
                               njoint=NJOINT, 
                               layers=NN, 
                               in_sincos=IN_SINCOS, 
-                              out_orientation=OUT_ORIENTATION)
-    
+                              out_orientation=OUT_ORIENTATION,
+                              )
+        
     model = nn.get_trained_model(X_train, y_train)
 
 
@@ -67,7 +69,7 @@ if __name__ == "__main__":
     # ------------------------------------------------------------------------
     # Compare the Jacobian with the true Jacobian and Plot the difference
 
-    thetas = np.random.random((100, NJOINT)).astype(np.float32) * 2 * np.pi
+    thetas = [pid.get_rnd_theta(NJOINT) for _ in range(100)]
     
     diffs = nn.compare_jacobian(model, thetas)
     nn.plot_jac_diff(diffs)
@@ -79,8 +81,8 @@ if __name__ == "__main__":
     print("\n------------------------------")
     print("Inverse Kinematics\n")
 
-    NEWTON = False
-    NUM_IT = 500
+    NEWTON = True
+    NUM_IT = 100
     STRESS_TEST = False
 
     if STRESS_TEST:
@@ -115,6 +117,9 @@ if __name__ == "__main__":
     else:
         in_theta = pid.get_rnd_theta(NJOINT)
         goal_pos = pid.get_rnd_pos_in_workspace(NJOINT, verbose=True)
+        # in_theta = tf.cast(np.array([2, 1, 0]), tf.float64)
+        # goal_pos = tf.cast(jacobian.fwd_kin_true(tf.cast(np.array([0,0,0]), tf.float64)), tf.float64)
+        # goal_pos = tf.cast([-0.1, -0.2], tf.float64)
 
         final_theta, err, max_it_reached = inverse_kin.inverse_kinematic(model, in_theta, goal_pos,
                                                                         newton=NEWTON, num_it=NUM_IT, dbg=True)
@@ -128,6 +133,7 @@ if __name__ == "__main__":
     final_theta = tf.where(final_theta > bounds, final_theta - 2*np.pi, final_theta)
 
 
+    # ------------------------------------------------------------------------
     # ------------------------------------------------------------------------
     # PID Controller    
     
