@@ -11,24 +11,28 @@ import tensorflow as tf
 if __name__ == "__main__":
 
     # ------------------------------------------------------------------------
+    # ------------------------------------------------------------------------
     # Globals
 
     DIM = 2
     NJOINT = 3
-    IN_SINCOS = False
-    OUT_ORIENTATION = False
+    IN_SINCOS = True
+    OUT_ORIENTATION = True
 
     NN = (32,32)
-    VALIDATION = False
+    VALIDATION = True
+
+    # ------------------------------------------------------------------------
+    
+    if (DIM, NJOINT) not in [(2, 2), (2, 3), (3, 5)]:
+        print("[E] Invalid dimension or number of joints")
+        exit()
 
     # ------------------------------------------------------------------------
     # ------------------------------------------------------------------------
     # Load the data and split it into train and test
 
-    if VALIDATION:
-        data, header = parse.parse_data(f"../Dataset/logfile_{DIM}_{NJOINT}_val.csv")
-    else:
-        data, header = parse.parse_data(f"../Dataset/logfile_{DIM}_{NJOINT}.csv")
+    data, header = parse.parse_data(f"../Dataset/logfile_{DIM}_{NJOINT}.csv")
 
 
     X_train, X_test, y_train, y_test = parse.split_data(data, 
@@ -39,9 +43,17 @@ if __name__ == "__main__":
                                                         header=header)
     
     if VALIDATION:
-        X_test = np.concatenate((X_train, X_test), axis=0)
-        y_test = np.concatenate((y_train, y_test), axis=0)
+        X_train = np.concatenate((X_train, X_test), axis=0)
+        y_train = np.concatenate((y_train, y_test), axis=0)
 
+        data_val, header_val = parse.parse_data(f"../Dataset/logfile_{DIM}_{NJOINT}_val.csv")
+        X_test_val, y_test_val = parse.split_data(  data_val, 
+                                                    njoint=NJOINT, 
+                                                    dimensions=DIM,
+                                                    consider_orientation=OUT_ORIENTATION,
+                                                    consider_sincos=IN_SINCOS,
+                                                    header=header_val,
+                                                    train_test=False)
 
 
     # ------------------------------------------------------------------------
@@ -65,6 +77,15 @@ if __name__ == "__main__":
 
     nn.plot_error(err_pos)
 
+    # ------------------------------------------------------------------------
+    # Exit if not implemented
+
+    if NJOINT == 5:
+        print("[E] jacobian comparison with 5DOF robot not implemented yet")
+        exit()
+    if IN_SINCOS or OUT_ORIENTATION:
+        print("[E] jacobian comparison with sin/cos or orientation not implemented yet")
+        exit()
 
     # ------------------------------------------------------------------------
     # Compare the Jacobian with the true Jacobian and Plot the difference

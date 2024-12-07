@@ -29,10 +29,12 @@ class NeuralNetwork:
         end_str += "q" if out_orientation else ""
         end_str = "_" + end_str if end_str else ""
 
+        end_str = "-".join([str(x) for x in layers]) + end_str
+
         if save_model:
             from os import listdir
             models_dir = f"../Models/{njoint}DOF/"
-            self.get_model_filename = f"model_{njoint}dof_NN-{layers[0]}-{layers[1]}" + end_str + ".keras"
+            self.get_model_filename = f"model_{njoint}dof_NN-" + end_str + ".keras"
             if self.get_model_filename not in listdir(models_dir):
                 print("No saved model found!")
                 self.set_model_filename = models_dir + self.get_model_filename
@@ -93,6 +95,7 @@ class NeuralNetwork:
             print(f"Mean error in position: {tf.reduce_mean(err_pos)}")
             if self.out_orientation:
                 print(f"Mean error in orientation: {tf.reduce_mean(err_ori)}")
+            print()
 
         return err_pos, err_ori
     
@@ -100,7 +103,9 @@ class NeuralNetwork:
         import matplotlib.pyplot as plt
         plt.figure()
         plt.plot(err_pos)
-        plt.savefig("output.png")
+        plt.axhline(y=tf.reduce_mean(err_pos), color='r', linestyle='--')
+        plt.title("Error in position ("+ "-".join([str(x) for x in self.layers]) + ")")
+        plt.savefig("pos_error_plot.png")
 
     def compare_jacobian(self, model, thetas):
         import jacobian
@@ -126,8 +131,8 @@ class NeuralNetwork:
         plt.axhline(y=tf.reduce_mean(diffs), color='r', linestyle='--')
         plt.xlabel("Random theta")
         plt.ylabel("Difference")
-        plt.title(f"Difference between true Jacobian and Jacobian from NN ({self.layers[0]}-{self.layers[1]})")
-        plt.savefig(f"../Imgs/Jac_diffs/{self.njoint}DOF/NN_{self.layers[0]}-{self.layers[1]}_s100.png")
+        plt.title("Difference between true Jacobian and Jacobian from NN ("+ "-".join([str(x) for x in self.layers]) + ")")
+        plt.savefig(f"../Imgs/Jac_diffs/{self.njoint}DOF/NN_"+ "-".join([str(x) for x in self.layers]) + "_s100.png")
         
         print("Mean difference:", np.mean(diffs))
         print("Max difference: ", np.max(diffs))

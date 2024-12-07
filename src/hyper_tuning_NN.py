@@ -25,7 +25,7 @@ def run_experiment(neurons, activation, loss, optimizer, dropout, regularize, X_
 if __name__ == "__main__":
 
     DIM = 2
-    NJOINT = 3
+    NJOINT = 2
     VALIDATION = False
     IN_SINCOS = False
     OUT_ORIENTATION = False

@@ -36,7 +36,7 @@ def get_env(NJOINT, init_theta, goal_pos, model=None, final_theta=None, seed=123
     # elif NJOINT == 5:
     #     env = MARRtinoArmEnv(render_mode="human")
     else:
-        print(f"Unknown environment {NJOINT}")
+        print(f"[E] {NJOINT}DOF Robot not implemented yet")
         sys.exit(1)
 
     # env.reset(seed=seed)
@@ -47,7 +47,7 @@ def get_env(NJOINT, init_theta, goal_pos, model=None, final_theta=None, seed=123
 
 def get_rnd_theta(NJOINT):
     if NJOINT != 2 and NJOINT != 3:
-        print(f"Unknown environment {NJOINT}")
+        print(f"[E] {NJOINT}DOF Robot not implemented yet")
         sys.exit(1)
     bounds = [3.14, 3] if NJOINT == 2 else [3.14, 1.8, 1.8]
     rnd = np.random.random((NJOINT,)).astype(np.float32)
@@ -58,7 +58,7 @@ def get_rnd_theta(NJOINT):
 
 def get_rnd_pos_in_workspace(NJOINT, verbose=False):
     if NJOINT != 2 and NJOINT != 3:
-        print(f"Unknown environment {NJOINT}")
+        print(f"[E] {NJOINT}DOF Robot not implemented yet")
         sys.exit(1)
 
     theta = get_rnd_theta(NJOINT)
