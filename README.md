@@ -13,7 +13,8 @@ At the end of the project, I also implemented a PID controller to control the ro
 ## Execution
 To run the project, execute the following command:
 ```bash
-~$ TF_CPP_MIN_LOG_LEVEL=2 python main.py
+cd src/
+TF_CPP_MIN_LOG_LEVEL=2 python main.py
 ```
 
 ## Globals
@@ -30,3 +31,12 @@ To run the project, execute the following command:
 ◦ NUM_IT: Specifies the maximum number of iterations for the algorithm.
 
 ◦ STRESS_TEST: Repeats the inverse kinematics algorithm 100 times for statistical analysis of convergence and errors.
+
+# TODO
+Here are a few improvements worth considering to enhance the results:
+
+• Implement kinematics and PID control for the 5DOF robot.
+
+• Incorporate orientation into the inverse kinematics and subsequent PID control.
+
+• Develop an inverse kinematics algorithm that accounts for joint boundaries.
